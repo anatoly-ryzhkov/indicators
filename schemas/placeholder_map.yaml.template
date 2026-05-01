@@ -1,0 +1,22 @@
+# Placeholder values for this specific case.
+# Replace empty strings with actual values from the case context.
+# adapt_case.py will substitute {KEY} → value in indicator_en and adaptation_notes columns.
+#
+# Rules:
+#   - Keep values concise (2–6 words max), they are inserted inline into indicator text
+#   - Use plural forms where the placeholder implies a list (e.g. COMPETITORS_OR_ALTERNATIVES)
+#   - If a placeholder is not applicable to this case, leave it empty — adapt_case.py will warn
+
+PRODUCT: ""                        # e.g. "the mobile wallet app"
+OWN_PRODUCT: ""                    # e.g. "PocketPay"
+FINANCIAL_METRICS_DOMAIN: ""       # e.g. "payment processing revenue"
+MONETIZATION_LEVERS: ""            # e.g. "interchange fees, FX margin, subscription"
+BUSINESS_MODEL_COMPONENTS: ""      # e.g. "acquiring, issuing, settlement"
+TARGET_AUDIENCE_SEGMENTS: ""       # e.g. "SMB merchants, individual consumers"
+COMPETITORS_OR_ALTERNATIVES: ""    # e.g. "Stripe, PayPal, bank transfers"
+COST_CATEGORIES: ""                # e.g. "fraud losses, processing fees, support costs"
+USER_BEHAVIOR_METRICS_DOMAIN: ""   # e.g. "transaction frequency, churn, activation rate"
+KEY_STAKEHOLDERS: ""               # e.g. "compliance, engineering, sales"
+COMPLEX_SYSTEM_COMPONENTS: ""      # e.g. "risk engine, ledger, notification service"
+PRIMARY_INTERFACE: ""              # e.g. "mobile app"
+DELIVERY_METRICS: ""               # e.g. "release cadence, incident rate, deploy frequency"

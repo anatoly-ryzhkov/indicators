@@ -1,0 +1,27 @@
+# Case metadata — fill before running adapt_case.py
+case_id: case_01                  # unique ID, e.g. case_01, case_02
+candidate_level_claimed: senior   # junior / middle / senior / not_stated
+product_type: ""                  # free text, e.g. b2b_saas, marketplace, fintech
+interview_date: "YYYY-MM-DD"
+interviewer: ""
+master_version: ""                # git SHA of master at adaptation time — filled by adapt_case.py
+
+# Which criteria are actually covered by this case's materials?
+# Only criteria in scope will be included in validation diff.
+criteria_in_scope:
+  - C01
+  - C02
+  # add more as needed
+
+# Criteria explicitly excluded and why
+criteria_excluded:
+  # - criterion: C15
+  #   reason: "no relevant question asked"
+
+# Transcript files available (relative to case folder)
+transcripts:
+  - transcripts/interview_main.txt
+  # - transcripts/solution_doc.txt
+  # - transcripts/notes.txt
+
+notes: ""

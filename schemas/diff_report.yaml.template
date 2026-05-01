@@ -1,0 +1,45 @@
+# Diff report — auto-generated skeleton by validate_case.py, then manually annotated.
+# Fill error_types, analysis, fix_applied, fix_target for each mismatch.
+#
+# error_types (one or more per mismatch):
+#   FN_indicator     — indicator should have fired, didn't (fix: rephrase indicator → master)
+#   FP_indicator     — indicator fired, shouldn't have (fix: tighten indicator → master)
+#   FN_coverage      — behavior present in transcript, no indicator exists for it (fix: add indicator → master)
+#   threshold_error  — indicators fired correctly but aggregation gave wrong level (fix: Aggregation_Rules → master)
+#   block_error      — blocks_level_up_to set too strict or too loose (fix: field value → master)
+#   placeholder_error — placeholder substitution too narrow/wide for this domain (fix: adapted + possibly new placeholder → master)
+#
+# fix_target: master / adapted / both
+
+case_id: ""
+master_version: ""
+run_date: "YYYY-MM-DD"
+overall_match_pct: null           # filled by validate_case.py
+
+mismatches: []
+# Example entry (uncomment and fill):
+# - criterion: C01
+#   human_grade: -1
+#   pipeline_grade: 0
+#   delta: +1                     # pipeline_grade - human_grade; positive = pipeline overestimates
+#   error_types:
+#     - FN_indicator
+#   analysis: >
+#     The candidate gave a vague answer about user segments but didn't probe constraints.
+#     Indicator C01-L0-F3-i02 should have fired but did not — phrasing too narrow.
+#   fix_applied: >
+#     Broadened C01-L0-F3-i02 to include 'or any implicit constraint'. Bumped version to 1.1.
+#   fix_target: master
+
+summary:
+  total_criteria_assessed: null
+  matched: null
+  mismatched: null
+  mismatch_breakdown:
+    FN_indicator: 0
+    FP_indicator: 0
+    FN_coverage: 0
+    threshold_error: 0
+    block_error: 0
+    placeholder_error: 0
+  systemic_patterns: ""           # free text: recurring error types, hypotheses about root cause

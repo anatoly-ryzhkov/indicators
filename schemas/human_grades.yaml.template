@@ -1,0 +1,35 @@
+# Human assessor grades for this case.
+# Fill after reviewing all case materials, before running validate_case.py.
+#
+# Values: -2 / -1 / 0 / not_assessed
+# Use not_assessed when the criterion was not covered by available materials.
+
+C01: not_assessed   # Problem scoping depth
+C02: not_assessed   # Problem decomposition
+C03: not_assessed   # Hypothesis generation
+C04: not_assessed   # Hypothesis prioritization
+C05: not_assessed   # Data fluency
+C06: not_assessed   # Metrics definition
+C07: not_assessed   # Root cause analysis
+C08: not_assessed   # Solution breadth
+C09: not_assessed   # Solution depth
+C10: not_assessed   # Feasibility assessment
+C11: not_assessed   # Prioritization of solutions
+C12: not_assessed   # Trade-off reasoning
+C13: not_assessed   # Stakeholder awareness
+C14: not_assessed   # Communication clarity
+C15: not_assessed   # Ambiguity handling
+C16: not_assessed   # Quantitative reasoning
+C17: not_assessed   # Strategic thinking
+C18: not_assessed   # User empathy
+C19: not_assessed   # Execution orientation
+C20: not_assessed   # Learning from feedback
+C21: not_assessed   # Cross-functional thinking
+C22: not_assessed   # Risk awareness
+C23: not_assessed   # Ownership and initiative
+C24: not_assessed   # Complexity management
+C25: not_assessed   # Self-awareness and growth
+
+assessor: ""
+assessment_date: "YYYY-MM-DD"
+notes: ""

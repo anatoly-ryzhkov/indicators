@@ -1,0 +1,8 @@
+# Case folders are not committed to master — they contain candidate data
+cases/case_*/
+calibration/*/
+
+# Python
+__pycache__/
+*.pyc
+.DS_Store
