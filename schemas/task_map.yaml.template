@@ -1,0 +1,20 @@
+# task_map.yaml.template — пустой шаблон для новой группы задач
+# Скопируй, заполни, добавь в master/task_map.yaml
+
+task_groups:
+
+  - id: TG-XX
+    name: ""         # Название группы задач
+    tasks:
+
+      - id: T-XX
+        name: ""     # Формулировка задачи (можно с {PLACEHOLDER})
+        criteria_fit:
+          CXX: fit   # fit / partial
+        questions:
+          - id: Q-TXX-1
+            criterion: CXX
+            type: case       # case / judgment / depth
+            levels: all      # all / top
+            text: >
+              Текст вопроса. Можно использовать {PLACEHOLDER}.
