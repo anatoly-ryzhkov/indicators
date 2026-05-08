@@ -6,7 +6,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-OUT = "/Users/starfish/Downloads/indicators_pilot/indicators_full_v2.xlsx"
+import os as _os
+OUT = str(_os.path.join(_os.path.dirname(__file__), "indicators_full_v2.xlsx"))
 
 wb = Workbook()
 FONT = "Arial"
@@ -80,7 +81,7 @@ readme = [
     ("Step 2", "Find/replace placeholders in indicator_en across Indicators_Master."),
     ("Step 3", "Export to LLM-prompt JSON via a separate script (system prompt wraps each indicator)."),
     ("", ""),
-    ("Status", "v2 — full set of 25 criteria, ~280 indicators. Adaptation to specific case = next step."),
+    ("Status", "v3 — 26 criteria (added C26 AI в продукте), ~328 indicators (+44 from v2). Covers 6 corp competencies. Adaptation to specific case = next step."),
 ]
 for i, (k, v) in enumerate(readme, 1):
     ws.cell(row=i, column=1, value=k); ws.cell(row=i, column=2, value=v)
@@ -200,6 +201,10 @@ criteria = [
      "Отвечал запутанно; интервьюеру приходилось «тянуть» дискуссию и прояснять мысли.",
      "Реактивно отвечал прозрачно и по делу, корректно и понятно закрывал вопросы по мере поступления.",
      "Вел дискуссию проактивно: обозначал план ответа, структурировал мысль и уверенно отвечал на сложные уточнения."),
+    ("C26", "AI в продукте", "skill",
+     "Не рассматривал AI как инструмент или стратегический элемент продукта; нет понимания ключевых возможностей и ограничений AI-систем.",
+     "Понимал базовые AI-концепции и применял AI-инструменты в работе, но без системного продуктового мышления.",
+     "Показывал calibrated понимание AI-возможностей и ограничений; принимал обоснованные решения о build/buy/partner; учитывал responsible AI риски; эффективно коллаборировал с ML-командой."),
 ]
 for c in criteria: ws.append(c)
 style_header(ws, len(hdrs))
@@ -533,6 +538,16 @@ I += [
     ("C08-L0-F6-i11","C08",0,"missing-metric-flagged","нет метрики — нужно завести",
      "Candidate identifies missing metrics that should be tracked — including, but not limited to 'we have no LTV measurement', 'churn is not properly defined', 'we should add an activation metric', or any other gap-and-proposal.",
      "—",None,"—","—","—"),
+    # ── Tuning v1.1: added after case_01 blind run (C08 delta=+1) ──────────────
+    # Pipeline gave -1 (L-1 fired) but human gave -2 because candidate listed
+    # individual metrics without any relational structure. Existing L-2 blockers
+    # only catch satisfaction-only or total inability to explain a metric.
+    # New hard block catches "metric enumeration without hierarchy" pattern.
+    ("C08-L-2-F3-i12","C08",-2,"metrics-no-hierarchy","метрики без иерархии / flat list",
+     "Candidate mentions multiple metrics from {USER_BEHAVIOR_METRICS_DOMAIN} but treats them as a flat, unordered collection — including, but not limited to listing widget usage rates, retention, conversion rate, and MAU as equally weighted observations, failing to identify which metric is primary vs supporting, discussing metrics with no causal or hierarchical relationship between them, or any other discourse where metrics are named but not structurally organized.",
+     "{USER_BEHAVIOR_METRICS_DOMAIN}",-2,
+     "Fire if candidate names ≥2 metrics but shows zero relational framing: no primary metric, no driver→outcome logic, no grouping by funnel stage. Do NOT fire if candidate establishes even one directional relationship (e.g. 'retention is primary, conversion is a leading indicator for it').",
+     "—","—"),
 ]
 
 # ============ C09 — User metrics (experience) ============
@@ -678,7 +693,7 @@ I += [
 I += [
     ("C13-L-2-F1-i01","C13",-2,"feature-additive","только добавлял фичи",
      "Candidate proposes solutions purely additively without considering system integrity — including, but not limited to stacking features without removing/refactoring, ignoring overlap, ignoring conflicting components, or any other accumulation-only approach.",
-     "—",-1,"—","—","—"),
+     "—",-2,"—","—","—"),  # Tuning v1.1: hard block — purely additive thinking is a fundamental floor; cannot reach -1
     ("C13-L-2-F2-i02","C13",-2,"downstream-blind","игнорирует последствия для пользователей и процессов",
      "Candidate ignores downstream impact of changes — including, but not limited to no analysis of which user segments are affected, no analysis of which processes break, no migration plan for existing users, or any other downstream blind spot.",
      "—",-1,"—","—","—"),
@@ -1123,12 +1138,17 @@ I += [
     ("C25-L-2-F1-i02","C25",-2,"no-logical-structure","ответ без структуры",
      "Candidate gives responses that lack logical structure — including, but not limited to jumping between unrelated facts, mixing examples with arguments without separation, leaving sentences unfinished, or any other delivery without clear framing or progression.",
      "—",-1,"—","—","—"),
+    # Tuning v1.1: removed block=-1 from i03/i04. Rationale: occasional tangents
+    # and conversational fillers are normal in verbal interviews and should contribute
+    # to the -2 threshold (≥50% L-2 must fire) rather than individually blocking.
+    # Only structurally severe behaviors (avoids answering, no structure, interviewer pulls)
+    # should be blocking. Validated against case_01 cold-shogun-3093 (C25 human=0).
     ("C25-L-2-F1-i03","C25",-2,"irrelevant-detail","лишние детали",
      "Candidate includes irrelevant or excessive detail that dilutes the main message — including, but not limited to going off-topic mid-answer, piling technical details before establishing the core idea, listing context that doesn't serve the question, or any other overload that obscures the answer.",
-     "—",-1,"—","—","—"),
+     "—",None,"—","—","—"),
     ("C25-L-2-F2-i04","C25",-2,"vague-language","размытый язык",
-     "Candidate uses vague, imprecise, or placeholder language — including, but not limited to frequent 'things', 'stuff', 'that thing we did', 'some kind of', extensive 'um/uh' fillers, or any other low-content language in place of specific terms.",
-     "—",-1,"—","—","'We did some stuff with the data thing and it kind of worked.'"),
+     "Candidate uses vague, imprecise, or placeholder language — including, but not limited to frequent 'things', 'stuff', 'that thing we did', 'some kind of', extensive 'um/uh' fillers, or any other low-content language in place of specific terms. Note: conversational connectors normal in the interview language (e.g. 'ну', 'вот' in Russian) do not count unless they replace specific content.",
+     "—",None,"—","—","'We did some stuff with the data thing and it kind of worked.'"),
     ("C25-L-2-F1-i05","C25",-2,"untracked-jumps","перескакивает между темами",
      "Candidate jumps between topics without signaling transitions or finishing previous points — including, but not limited to starting one explanation then mid-sentence shifting to another, abandoning a thread without summarizing, weaving multiple unresolved threads, or any other untracked topic switching.",
      "—",-1,"—","—","—"),
@@ -1168,6 +1188,296 @@ I += [
     ("C25-L0-F4-i17","C25",0,"pushback-handled","уверенно отвечает на сложные уточнения",
      "Candidate handles difficult clarifying or pushback questions confidently — including, but not limited to acknowledging the challenge before answering, restating the underlying question to confirm understanding, defending a position with reasoning rather than retreating, or any other composed response to scrutiny.",
      "—",None,"—","'That's a fair challenge. Let me restate the assumption — I'm assuming X. Given that, I still think Y because...'","—"),
+]
+
+# ── C11 additions — JTBD / need translation / journey / segmentation (КЦ) ──────
+I += [
+    ("C11-L-2-F2-i03","C11",-2,"solution-without-user","решение без обоснования пользовательской потребностью",
+     "Candidate proposes solutions without grounding them in any specific user need — including, but not limited to reasoning purely from business convenience, competitor benchmarking, or internal assumptions without any user reference, or any other user-absent solution framing.",
+     "—",-1,
+     "Soft block — fundamentally user-absent thinking prevents L0.",
+     "—","'We should add this because our competitor has it.'"),
+    ("C11-L-1-F3-i06","C11",-1,"surface-need-interpretation","принимает запросы пользователя за чистую монету",
+     "Candidate accepts user requests at face value without probing for the underlying motivation — including, but not limited to implementing stated feature requests without questioning 'why', treating expressed preferences as ground truth, or any other surface-level interpretation of user need.",
+     "—",None,"—","—","—"),
+    ("C11-L0-F6-i11","C11",0,"jtbd-translation","переводит запросы в underlying jobs",
+     "Candidate translates stated user requests into underlying jobs-to-be-done — including, but not limited to identifying what the user is ultimately trying to accomplish, reframing a feature request as an outcome need, distinguishing stated preference from actual goal, or any other need-translation behavior.",
+     "—",None,"—",
+     "'They asked for a filter, but what they really need is to find a specific seller type fast — let me design for the goal.'","—"),
+    ("C11-L0-F7-i12","C11",0,"journey-thinking","рассматривает пользовательский опыт как многоэтапную цепочку",
+     "Candidate maps user experience across multiple touchpoints or lifecycle stages — including, but not limited to describing pre/during/post interaction flows, identifying handoff moments between product areas, referencing onboarding vs. activation vs. retention moments, or any other multi-stage customer view.",
+     "—",None,"—","—","—"),
+    ("C11-L0-F8-i13","C11",0,"segmentation-sophistication","дифференцирует потребности пользователей по сегментам",
+     "Candidate differentiates between user segments when describing customer needs — including, but not limited to identifying different jobs-to-be-done for different user types, noting that feedback from one segment may not generalize to another, adjusting product priorities for different segment needs, or any other segment-aware customer thinking.",
+     "—",None,"—",
+     "'Small sellers need time-saving; large sellers need control and auditability — same dashboard, different primary flows.'","—"),
+]
+
+# ── C13 additions — second-order effects (СМ) ──────────────────────────────────
+I += [
+    ("C13-L-1-F3-i05","C13",-1,"first-order-only","рассматривает только первый слой следствий",
+     "Candidate considers only first-order effects of proposed solutions — including, but not limited to stating 'the feature will increase engagement' without addressing how user behavior will change downstream, ignoring feedback loops within the system, or any other single-layer causation reasoning.",
+     "—",None,"—","—","'Adding the export button will make users happy.'"),
+    ("C13-L0-F6-i12","C13",0,"second-order-effects","предвидит следствия второго порядка",
+     "Candidate anticipates second-order consequences of proposed solutions — including, but not limited to naming downstream effects on other system components, predicting unexpected user behavioral adaptation to a change, identifying feedback loops that may amplify or dampen the intended effect, or any other non-obvious consequence thinking.",
+     "—",None,"—",
+     "'Giving sellers real-time analytics will shift their behavior — they'll start gaming the metrics, so we need to design the metric to be manipulation-resistant.'","—"),
+]
+
+# ── C14 additions — growth mindset, self-awareness, accountability (УС) ─────────
+I += [
+    ("C14-L-2-F2-i03","C14",-2,"external-attribution","систематически приписывает провалы внешним факторам",
+     "Candidate attributes all or nearly all failures systematically to external factors — including, but not limited to consistently blaming team members, market conditions, management decisions, or timing without owning any personal contribution, never using 'I should have', or any other systematic externalizing of failure attribution.",
+     "—",-2,
+     "Hard block — systematic external attribution is a management risk that floors the grade.",
+     "—","'The project failed because the market wasn't ready and the team didn't deliver on time.'"),
+    ("C14-L-2-F3-i04","C14",-2,"self-assessment-contradiction","самооценка систематически противоречит приводимым примерам",
+     "Candidate's self-assessment systematically contradicts the evidence they provide in the interview — including, but not limited to claiming expertise they cannot back with concrete examples, describing strengths that match no observable behavior in the interview, or any other self-assessment miscalibration.",
+     "—",-1,
+     "Soft block — inability to accurately self-assess is an observable leadership risk.",
+     "—","Candidate says 'My strength is data-driven thinking' but all examples in the interview are anecdotal."),
+    ("C14-L-1-F4-i06","C14",-1,"surface-failure-acknowledgment","признает провалы поверхностно без извлечения уроков",
+     "Candidate acknowledges past failures briefly but extracts no explicit learning — including, but not limited to mentioning a project that 'didn't work out' without follow-through analysis, noting 'we learned from it' without specifying what was learned, or any other surface-level failure acknowledgment without growth signal.",
+     "—",None,"—","—","'Yeah, that project didn't go well, but we moved on.'"),
+    ("C14-L-1-F5-i07","C14",-1,"reactive-learning","учится только под давлением задачи",
+     "Candidate learns only in reaction to immediate job requirements — including, but not limited to 'I picked up X because we needed it for the project' without examples of learning for its own sake, no examples of unsolicited skill development, or any other exclusively reactive learning pattern.",
+     "—",None,"—","—","—"),
+    ("C14-L0-F6-i13","C14",0,"failure-as-growth","фреймирует провалы как обучающий опыт",
+     "Candidate explicitly frames past failures as learning events — including, but not limited to naming what specifically they learned from a mistake, describing how a failure changed their subsequent approach, volunteering a failure when discussing growth without being prompted, or any other failure-as-growth framing.",
+     "—",None,"—",
+     "'That project taught me to validate the distribution model before building the feature — I've applied that to every initiative since.'","—"),
+    ("C14-L0-F7-i14","C14",0,"first-person-accountability","берет личную ответственность за провалы",
+     "Candidate explicitly owns their personal contribution to past failures — including, but not limited to naming a specific decision they made that contributed to a bad outcome, using 'I should have', 'my mistake was', 'I didn't see this coming and that's on me', or any other first-person accountability for failure rather than diffuse team attribution.",
+     "—",None,"—","'I should have pushed back on the timeline earlier — I saw the risk and didn't escalate.'","—"),
+    ("C14-L0-F7-i15","C14",0,"proactive-learning","самостоятельно инициирует собственное развитие",
+     "Candidate describes unsolicited behaviors to stay current and develop — including, but not limited to reading industry research outside of immediate job needs, participating in professional communities, seeking feedback without being prompted, experimenting with new tools or methodologies out of curiosity, or any other self-initiated learning behavior.",
+     "—",None,"—",
+     "'I try to read at least one research paper or industry case study weekly — that's how I caught the JTBD framework before my team adopted it.'","—"),
+]
+
+# ── C15 additions — cross-functional influence without authority (РКС) ───────────
+I += [
+    ("C15-L0-F6-i12","C15",0,"influence-without-authority","влияет на результат без прямых полномочий",
+     "Candidate demonstrates influence over outcomes with teams where they have no direct authority — including, but not limited to describing how they aligned engineering priorities through persuasion, built coalitions for business decisions across departments, changed team behavior through framing or data rather than directives, or any other influence-without-authority behavior.",
+     "—",None,"—",
+     "'I had no authority over the data team, so I ran a joint OKR planning session with shared success metrics — that's what got their buy-in.'","—"),
+]
+
+# ── C16 additions — fail-fast discipline (УРО) + customer advocacy in trade-offs (КЦ) ──
+I += [
+    ("C16-L-2-F2-i03","C16",-2,"sunk-cost-continuation","продолжает инициативу из-за вложений без новых данных",
+     "Candidate persists with failing initiatives without predefined stopping criteria, driven by prior investment — including, but not limited to continuing a project because of resources already spent, doubling down on a direction without citing new evidence, using 'we've already invested too much to stop', or any other sunk-cost-driven continuation.",
+     "—",-1,
+     "Soft block — sunk-cost bias in resource allocation prevents reliable L0 delivery.",
+     "—","'We'd already spent 4 months on it, so we kept going even though early results were disappointing.'"),
+    ("C16-L0-F5-i12","C16",0,"predefined-stopping-criteria","заранее определяет критерии остановки",
+     "Candidate describes predefined stopping criteria for initiatives — including, but not limited to naming the metric that would cause them to abandon a direction, describing a kill-switch decision they made, citing a pre-committed threshold defined before an experiment launched, or any other pre-committed exit criterion behavior.",
+     "—",None,"—",
+     "'Before we started, we agreed: if conversion doesn't improve by at least 5% in six weeks, we shut it down.'","—"),
+    ("C16-L0-F6-i13","C16",0,"customer-advocacy-in-tradeoffs","отстаивает интересы пользователя в приоритизации",
+     "Candidate explicitly advocates for user needs when facing pressure to deprioritize them — including, but not limited to citing user impact data in stakeholder debates, quantifying the cost-to-user of a deprioritization decision, referencing user research to defend scope under deadline pressure, or any other active user advocacy in a prioritization trade-off context.",
+     "—",None,"—",
+     "'Leadership wanted to cut the accessibility fixes, but I showed them the support ticket volume — 12% of sessions were affected. We kept them in scope.'","—"),
+]
+
+# ── C18 additions — pre-mortem / anticipatory failure thinking (СМ) ─────────────
+I += [
+    ("C18-L0-F6-i11","C18",0,"pre-mortem","запускает pre-mortem или аналогичное упреждающее мышление",
+     "Candidate describes proactively imagining failure scenarios before launch — including, but not limited to running a pre-mortem with the team, explicitly naming 'what could go wrong' before committing to a plan, building contingencies around anticipated failure modes, or any other anticipatory failure thinking conducted before rather than after problems occur.",
+     "—",None,"—",
+     "'Before we kicked off, I ran a 30-min pre-mortem with the team. The main risk that surfaced — and that we subsequently mitigated — was data quality from the partner integration.'","—"),
+]
+
+# ── C19 additions — productive conflict (РКС) + stress response (УС) ────────────
+I += [
+    ("C19-L-2-F2-i03","C19",-2,"pressure-destabilization","дестабилизируется под давлением",
+     "Candidate describes reactive or destabilizing behavior under high-pressure situations — including, but not limited to micromanaging team members under deadline pressure, shutting down external input when stressed, cutting quality or scope without explicit trade-off reasoning, or any other pressure-induced behavior degradation that undermined outcomes.",
+     "—",-1,
+     "Soft block — reactive pressure response prevents reliable leadership performance at L0.",
+     "—","'When the deadline came close, I started doing the dev's work myself because I didn't trust the team to deliver.'"),
+    ("C19-L-1-F4-i07","C19",-1,"conflict-avoidance","избегает конфликта через преждевременный консенсус",
+     "Candidate seeks premature consensus to avoid conflict — including, but not limited to 'we all agreed early on' without evidence of genuine debate, softening feedback to avoid friction, capitulating to stakeholder pressure without substantive reasoning, or any other conflict-avoidant behavior that reduced decision quality.",
+     "—",None,"—","—","'I softened the feedback because I didn't want to create tension with the design lead.'"),
+    ("C19-L0-F5-i12","C19",0,"productive-conflict-navigation","проводит конфликт продуктивно к лучшему результату",
+     "Candidate demonstrates ability to surface and navigate productive conflict — including, but not limited to facilitating alignment after a genuine disagreement, explicitly naming a conflict and working through it rather than around it, describing an outcome that was improved because of a resolved tension, or any other constructive conflict navigation.",
+     "—",None,"—",
+     "'Engineering and I had a real disagreement on the architecture. I asked us to spend two hours on a whiteboard — we argued it through and landed on a hybrid approach neither of us started with.'","—"),
+    ("C19-L0-F5-i13","C19",0,"stress-regulation","демонстрирует регулируемый ответ на стресс",
+     "Candidate describes a regulated response to high-pressure situations — including, but not limited to explicitly naming the pressure they were under, describing a concrete behavior they chose in response such as triage, communication reset, or scope trade-off, citing how they maintained quality under tight constraints, or any other evidence of stress regulation rather than reactive escalation.",
+     "—",None,"—",
+     "'Three days before launch a critical dependency failed. I called a 15-min stakeholder reset, we triaged scope, and I personally shadowed the hotfix to make sure QA wasn't skipped.'","—"),
+]
+
+# ── C20 additions — psychological safety (РКС) + capability building (РКС) ───────
+I += [
+    ("C20-L-2-F2-i03","C20",-2,"safety-suppression","подавляет несогласие или наказывает за плохие новости",
+     "Candidate describes behaviors that suppress dissent or punish the surfacing of bad news — including, but not limited to 'I needed people who believed in the vision', dismissing team concerns as negativity or resistance, preferring unanimous alignment over honest debate, or any other safety-suppressing behavior.",
+     "—",-2,
+     "Hard block — actively suppressing safety is a fundamental leadership failure that floors the grade.",
+     "—","'I made it clear early that I needed the team fully committed — doubts weren't helpful at that stage.'"),
+    ("C20-L-2-F3-i04","C20",-2,"people-as-execution-resources","относится к людям как к ресурсам без вложений в развитие",
+     "Candidate treats team members purely as execution resources without any development intent — including, but not limited to describing team assignments exclusively in terms of output needed, never mentioning team growth or capability investment, viewing attrition purely as headcount problems, or any other people-as-resource framing without development dimension.",
+     "—",-1,
+     "Soft block — pure resource orientation prevents L0 team leadership grade.",
+     "—","'I just needed the team to deliver the roadmap — development conversations were HR's job.'"),
+    ("C20-L-1-F5-i07","C20",-1,"limited-safety-formal","создает безопасность только в формальных форматах",
+     "Candidate describes creating psychological safety only in formal settings — including, but not limited to running retrospectives but not proactively creating safety between meetings, relying on 1:1s as the only channel for honest conversation, or any other limited-context safety creation.",
+     "—",None,"—","—","—"),
+    ("C20-L0-F6-i12","C20",0,"psychological-safety-creation","создает условия для психологической безопасности",
+     "Candidate describes proactive behaviors that create psychological safety — including, but not limited to explicitly inviting dissent in meetings, reacting non-punitively to bad news and modeling that reaction publicly, sharing their own mistakes with the team, rewarding people who surface problems early, or any other safety-enabling behavior.",
+     "—",None,"—",
+     "'When a junior PM found a critical flaw in my reasoning the day before the review, I thanked her publicly and changed the plan. The message I wanted to send was: that behavior is what we need here.'","—"),
+    ("C20-L0-F6-i13","C20",0,"capability-building","намеренно развивает способности людей в команде",
+     "Candidate describes deliberately developing team members' capabilities — including, but not limited to mentoring PMs with structured development goals, intentionally delegating stretch assignments beyond current skill level, providing structured growth feedback tied to specific behaviors, or any other active team capability-building behavior beyond day-to-day delivery.",
+     "—",None,"—",
+     "'I gave my most junior PM ownership of the pricing experiment even though I knew she'd need support — I coached her through it. Six months later she was running them independently.'","—"),
+]
+
+# ── C22 additions — goal quality (УРО) + AI product metrics (AI) ─────────────────
+I += [
+    ("C22-L-1-F2-i06","C22",-1,"vague-goal-setting","формулирует цели без измеримых критериев",
+     "Candidate sets goals vaguely or without measurable criteria — including, but not limited to 'we wanted to improve retention' without a target or timeframe, stating 'our goal was to grow' without a specific metric and threshold, or any other underspecified goal description.",
+     "—",None,"—","—","'We aimed to make the onboarding much better.'"),
+    ("C22-L0-F6-i13","C22",0,"well-formed-goal-articulation","формулирует цели с четкими критериями успеха",
+     "Candidate articulates goals with clear success criteria and realistic justification — including, but not limited to citing a specific target metric with a threshold and timeframe, explaining how the target was derived, naming measurement method and baseline, or any other well-formed goal articulation.",
+     "—",None,"—",
+     "'+15% 30-day retention within two quarters — baseline was 38%, industry benchmark for our segment is ~50%.'","—"),
+    ("C22-L0-F7-i14","C22",0,"ai-metric-translation","переводит метрики ML-модели в бизнес-метрики продукта",
+     "Candidate translates ML model performance metrics into business-meaningful product metrics — including, but not limited to connecting model precision/recall to user impact, defining what 'model quality' means in terms of product outcomes, framing acceptable error rate in terms of user experience cost, or any other AI-metric translation behavior.",
+     "—",None,"—",
+     "'A 5pp improvement in recall on the recommendation model means 8% more items added to cart — that's how I set the target for the ML team.'","—"),
+]
+
+# ── C23 additions — hypothesis-first orientation (СМ) ────────────────────────────
+I += [
+    ("C23-L-2-F3-i03","C23",-2,"assumption-free-solution","предлагает решения без формулировки проверяемых предположений",
+     "Candidate proposes solutions without articulating the assumptions being tested — including, but not limited to presenting a feature plan without naming what belief it validates, treating solution delivery as the goal rather than learning, never framing work as an experiment, or any other assumption-free solution framing.",
+     "—",-1,
+     "Soft block — solution-first without hypothesis prevents reliable L0 discovery practice.",
+     "—","'We just decided to build the export feature and see what happens.'"),
+    ("C23-L0-F6-i12","C23",0,"hypothesis-as-starting-point","начинает с гипотезы, а не с решения",
+     "Candidate articulates the hypothesis being tested before describing the solution — including, but not limited to naming the belief or assumption the feature was designed to validate, framing work as 'we believed X so we did Y to test it', identifying what evidence would confirm or disconfirm the hypothesis, or any other hypothesis-as-starting-point behavior.",
+     "—",None,"—",
+     "'Our hypothesis was that small sellers abandon after the first tax report because the UI overwhelms them — we built a simplified wizard to test whether guided completion improved activation.'","—"),
+]
+
+# ── C26 — AI в продукте (skill) ────────────────────────────────────────────────
+I += [
+    ("C26-L-2-F1-i01","C26",-2,"ai-fundamental-misstatement","допускает фундаментальные ошибки в понимании AI",
+     "Candidate makes fundamental misstatements about AI capabilities that would lead to serious product missteps — including, but not limited to claiming AI can generalize reliably from zero examples without fine-tuning, treating generative AI outputs as factually reliable without verification, confusing AI/ML with simple rule-based automation, or any other AI-literacy failure at the definitional level.",
+     "—",-2,
+     "Hard block — fundamental AI misconception disqualifies AI product decision-making.",
+     "—","'The model will just learn from the data and know what to do.' (said about a cold-start system with no training data)"),
+    ("C26-L-2-F2-i02","C26",-2,"ai-bias-blindness","не осознает риски предвзятости и несправедливости AI",
+     "Candidate dismisses or is unaware of AI bias and fairness risks — including, but not limited to treating AI output as objective because 'it uses data', not considering which groups may be disadvantaged by model predictions, ignoring privacy implications of training data, or any other bias-blindness in AI feature design.",
+     "—",-1,
+     "Soft block — bias blindness prevents responsible AI product ownership.",
+     "—","'The model is objective — it just uses historical data, there's no bias involved.'"),
+    ("C26-L-2-F3-i03","C26",-2,"ai-output-uncritical","принимает выводы AI некритически",
+     "Candidate uses AI outputs uncritically without applying domain judgment — including, but not limited to citing AI-generated content in product decisions without verification, following AI suggestions without checking against domain knowledge, treating model recommendations as ground truth, or any other unfiltered AI output acceptance.",
+     "—",-1,
+     "Soft block — uncritical AI use prevents reliable L0 AI product practice.",
+     "—","'I use AI to draft all our product requirements and go straight to implementation.'"),
+    ("C26-L-1-F1-i04","C26",-1,"ai-black-box","воспринимает AI как черный ящик без продуктовых следствий",
+     "Candidate treats AI as an undifferentiated black box without considering its product implications — including, but not limited to 'AI will handle it' without naming failure modes, no consideration of model accuracy trade-offs, ignoring latency or cost implications of inference, or any other framing that ignores what AI can and cannot do.",
+     "—",None,"—","—","'We'll just plug in AI and it'll work out.'"),
+    ("C26-L0-F1-i05","C26",0,"ai-capability-mental-model","имеет калиброванное понимание возможностей и ограничений AI",
+     "Candidate accurately describes the capability and limitation boundaries of current AI systems relevant to their product domain — including, but not limited to distinguishing between discriminative and generative AI, naming relevant failure modes such as hallucination or distributional shift, setting realistic AI capability expectations with stakeholders, or any other AI-capability-calibrated behavior.",
+     "—",None,"—",
+     "'LLMs are great for drafting but unreliable for factual accuracy — I always have a human review step before publishing AI-generated content.'","—"),
+    ("C26-L0-F2-i06","C26",0,"responsible-ai-design","проактивно учитывает справедливость и риски при проектировании AI",
+     "Candidate proactively considers fairness, bias, and responsibility risks when scoping AI features — including, but not limited to naming demographic groups at risk from model bias, describing a bias mitigation or monitoring approach, referencing privacy implications of training data collection, or any other responsible AI design behavior.",
+     "—",None,"—",
+     "'We stress-tested the model on underrepresented seller categories — it underperformed for rural sellers, so we added a fallback rule until we had enough training data.'","—"),
+    ("C26-L0-F3-i07","C26",0,"effective-ai-task-design","эффективно формулирует задачи для AI-инструментов",
+     "Candidate demonstrates effective task-design when working with AI tools — including, but not limited to describing how they structured a complex request to an LLM to improve output quality, iterating on prompts to overcome initial failures, designing the context window to get more relevant responses, or any other deliberate AI task-framing behavior.",
+     "—",None,"—",
+     "'I give the LLM a role, the specific constraints, and two worked examples — without examples the output is generic and not actionable.'","—"),
+    ("C26-L0-F4-i08","C26",0,"critical-ai-output-evaluation","критически оценивает результаты AI",
+     "Candidate applies critical judgment to AI-generated outputs — including, but not limited to routinely fact-checking AI content against primary sources, naming explicit rejection criteria for AI outputs, catching and correcting hallucinations in AI-drafted materials, or any other AI output quality control behavior.",
+     "—",None,"—",
+     "'I always verify any statistic the LLM produces — it has hallucinated plausible-sounding numbers in at least 20% of my past requests.'","—"),
+    ("C26-L0-F5-i09","C26",0,"ai-build-buy-partner","рассуждает о build/buy/partner для AI-возможностей",
+     "Candidate articulates a reasoned framework for build/buy/partner decisions on AI capabilities — including, but not limited to comparing in-house training vs. API integration vs. fine-tuning on cost and control, assessing data ownership and vendor lock-in implications of third-party AI services, or any other AI build/buy/partner reasoning.",
+     "—",None,"—",
+     "'For the core recommendation engine I want to train in-house because our data is proprietary. For document summarization I'll use an API — there's no competitive advantage in building that ourselves.'","—"),
+    ("C26-L0-F6-i10","C26",0,"ai-team-collaboration","эффективно коллаборирует с ML-инженерами и дата-сайентистами",
+     "Candidate describes effective collaboration patterns with ML engineers and data scientists — including, but not limited to co-defining success metrics jointly with the DS team, translating product requirements into ML problem framing, managing model iteration cycles with clear go/no-go criteria, or any other AI-team-specific collaboration behavior.",
+     "—",None,"—",
+     "'I define the business success metric and the data scientists help me translate it into a loss function — we do that together before any model training starts.'","—"),
+    ("C26-L0-F7-i11","C26",0,"ai-in-product-strategy","включает AI в стратегическое мышление о продукте",
+     "Candidate factors AI into product strategy — including, but not limited to evaluating AI as a competitive differentiator vs. a commodity capability, reasoning about the moat created by proprietary data for AI models, assessing regulatory implications of AI in their product domain, or any other AI dimension surfaced in strategic product reasoning.",
+     "—",None,"—",
+     "'Our real moat isn't the AI model — it's the labeled training data we've accumulated from 5 years of seller behavior. That takes competitors years to replicate.'","—"),
+
+    # ── C26 expansion v3.1 — based on L1–L5 AI literacy framework ────────────────
+    # L1 (Aware / Unaware-curious) → L-2 additions
+    ("C26-L-2-F4-i12","C26",-2,"no-professional-ai-use","не использует AI-инструменты в профессиональном контексте",
+     "Candidate has not adopted AI tools in any professional capacity — including, but not limited to never using AI for research, drafting, or analysis in PM work, relying exclusively on pre-AI workflows for tasks where AI tools are readily available, or any other absence of professional AI tool usage.",
+     "—",-1,
+     "Soft block — zero professional AI adoption is a literacy floor preventing L0.",
+     "—","'I've tried ChatGPT once or twice but I don't really use it for work.'"),
+    ("C26-L-2-F5-i13","C26",-2,"ai-vs-automation-confusion","путает AI с автоматизацией или скриптингом",
+     "Candidate conflates AI/LLM systems with rule-based automation or scripting — including, but not limited to describing a decision-tree chatbot as 'AI', treating a macro or RPA tool as 'machine learning', not distinguishing between explicit rules and learned models, or any other category confusion between AI and traditional automation.",
+     "—",-1,
+     "Soft block — automation/AI confusion signals L1 understanding that prevents reliable product decisions.",
+     "—","'We have AI — it automatically routes support tickets based on keywords.'"),
+
+    # L2 (Literate / Explorer) → L-1 additions
+    ("C26-L-1-F2-i05","C26",-1,"basic-ai-usage-pattern","регулярно использует один AI-инструмент для простых задач",
+     "Candidate uses at least one AI tool regularly for work tasks — including, but not limited to weekly use of a chat-based LLM for drafting, summarization, or research, describing a specific recurring task they do with AI, or any other regular single-tool AI usage pattern.",
+     "—",None,"—",
+     "'I use ChatGPT every week to summarize user research reports before presenting to stakeholders.'","—"),
+    ("C26-L-1-F3-i06","C26",-1,"ai-privacy-awareness","понимает базовые риски конфиденциальности при использовании cloud AI",
+     "Candidate demonstrates awareness of privacy and confidentiality risks when using cloud-based AI tools — including, but not limited to knowing not to paste internal proprietary data into public LLM interfaces, mentioning GDPR or corporate data policies in the context of AI tool selection, or any other privacy-conscious AI usage behavior.",
+     "—",None,"—",
+     "'I use AI for research and synthesis but I never paste customer PII or trade secrets into a public model — I use the enterprise API instead.'","—"),
+    ("C26-L-1-F4-i07","C26",-1,"prompt-context-awareness","понимает роль контекста и промпта в качестве вывода AI",
+     "Candidate understands that prompt design and context window content directly affect AI output quality — including, but not limited to knowing that more specific prompts produce more relevant outputs, understanding that models have no memory between sessions without context, or any other context/prompt-quality awareness.",
+     "—",None,"—",
+     "'I always give the model the role, the goal, and relevant constraints in the first message — otherwise it gives generic answers.'","—"),
+
+    # L3 (Practitioner / Fluent) → L0 additions
+    ("C26-L0-F8-i12","C26",0,"workflow-redesign-for-ai","перестраивает свой воркфлоу под AI, а не наоборот",
+     "Candidate restructures their own work processes to take advantage of AI rather than forcing AI into legacy workflows — including, but not limited to redesigning how they conduct user research synthesis, competitive analysis, or spec writing to be AI-native from the start, or any other workflow-first AI integration.",
+     "—",None,"—",
+     "'I don't use AI as a faster typewriter — I changed the whole process. Now I record user interviews, AI transcribes and extracts themes, and I react to that instead of writing notes by hand.'","—"),
+    ("C26-L0-F9-i13","C26",0,"multi-tool-ai-practice","использует 2–4 AI-инструмента под разные типы задач",
+     "Candidate uses multiple AI tools for different professional purposes — including, but not limited to combining a chat LLM for analysis with a coding assistant for automation, a document AI for synthesis, and a search AI for research, or any other deliberate multi-tool AI practice across at least two distinct task types.",
+     "—",None,"—",
+     "'I use Claude for long-form analysis and spec drafting, Cursor for automating data wrangling, and Perplexity for real-time market research — each has a different strength.'","—"),
+    ("C26-L0-F9-i14","C26",0,"ai-customization","создает кастомные AI-конфигурации под конкретные задачи",
+     "Candidate creates custom AI configurations for specific recurring tasks — including, but not limited to building GPTs or Claude Projects with custom system prompts for PM workflows, setting up persistent context for domain-specific work, or any other deliberate AI customization beyond default chat usage.",
+     "—",None,"—",
+     "'I have a Claude Project with our product vision, user personas, and current roadmap pre-loaded — every spec I draft starts with that context already set.'","—"),
+
+    # L4 (Integrator / Builder) → L0 additions
+    ("C26-L0-F10-i15","C26",0,"ai-team-deployment","внедряет AI-инструменты и автоматизации в процессы команды",
+     "Candidate deploys AI tools or pipelines into team processes beyond their own personal use — including, but not limited to introducing AI-assisted workflows for the product team, building automations others rely on, running internal demos or workshops that led to adoption, or any other team-level AI integration.",
+     "—",None,"—",
+     "'I built a Slack bot that pulls our weekly metrics, feeds them to an LLM, and posts a plain-language summary every Monday — six teams now use it.'","—"),
+    ("C26-L0-F10-i16","C26",0,"ai-roi-framing","считает и коммуницирует ROI от AI-внедрений",
+     "Candidate quantifies the value of AI adoption in their work or team — including, but not limited to estimating hours saved per week from AI-assisted workflows, calculating cost reduction from AI automation, presenting an ROI argument for an AI tooling investment to leadership, or any other economic framing of AI adoption.",
+     "—",None,"—",
+     "'The AI transcription + synthesis workflow saves each PM about 3 hours per research cycle — across 8 PMs that's $50k/year in recovered capacity, which I used to justify the enterprise license.'","—"),
+    ("C26-L0-F11-i17","C26",0,"ai-colleague-enablement","обучает и включает коллег в AI-практики",
+     "Candidate actively enables colleagues to adopt AI tools and practices — including, but not limited to running internal AI workshops, creating prompt libraries or how-to guides for the team, mentoring specific colleagues through AI adoption, or any other deliberate peer enablement behavior.",
+     "—",None,"—",
+     "'I ran a 90-minute internal session on prompting for PMs — 12 people attended and 8 reported using AI weekly a month later.'","—"),
+
+    # L4–L5 (Builder / Strategist) → L0 additions
+    ("C26-L0-F12-i18","C26",0,"agentic-ai-understanding","понимает и применяет агентные / многошаговые AI-воркфлоу",
+     "Candidate understands and applies agentic or multi-step AI workflows — including, but not limited to building or designing pipelines where AI performs sequential tasks with tool calls, describing when agentic AI is appropriate vs. a single LLM call, understanding failure modes of multi-step agents, or any other agentic AI application.",
+     "—",None,"—",
+     "'I set up an agent that scrapes competitor release notes weekly, categorizes changes by product area, and drafts a competitive briefing — it runs unattended and I review the output Friday.'","—"),
+    ("C26-L0-F12-i19","C26",0,"ai-eval-systematic","системно оценивает качество AI-систем",
+     "Candidate has a systematic approach to evaluating AI system quality — including, but not limited to defining an eval set before deploying an AI feature, tracking quality metrics over model updates, running A/B comparisons of model versions, or any other structured AI quality evaluation practice.",
+     "—",None,"—",
+     "'Before we shipped the AI summary feature, I built 50 golden examples — inputs with expected outputs. We run them on every model update to catch regressions before they hit users.'","—"),
+    ("C26-L0-F13-i20","C26",0,"ai-governance-org-thinking","мыслит об AI на уровне управления, рисков и орг-изменений",
+     "Candidate thinks about AI at the level of organizational governance and systemic risk — including, but not limited to reasoning about how AI adoption changes roles and responsibilities, considering data governance requirements for AI pipelines, anticipating organizational resistance or change management needs, or any other system-level AI thinking beyond individual tool use.",
+     "—",None,"—",
+     "'Deploying AI into support triage isn't just a product decision — it changes what the support team does, requires a data governance policy, and needs an audit trail for compliance. I mapped all of that before pitching it to leadership.'","—"),
 ]
 
 for row in I:
@@ -1261,6 +1571,7 @@ rules = [
     ("R-SKILL", "skill kind", "Skill criteria are evaluated against the case-discussion transcript pool only (C01, C03, C05, C07, C08, C10, C11, C12, C13, C15, C16, C18, C21, C22, C23, C24).", "—"),
     ("R-EXP", "experience kind", "Experience criteria are evaluated against the experience-interview transcript pool only (C02, C04, C06, C09, C14, C17, C19, C20).", "—"),
     ("R-META", "meta-skill kind", "Meta-skill criteria are evaluated against the entire transcript (C25).", "Communication is observable throughout."),
+    ("R-SKILL-C26", "C26", "C26 AI в продукте is evaluated against the case-discussion transcript pool, same as other skill criteria.", "AI product thinking is best elicited during case discussion."),
     ("R-PAIR-C01-C02", "C01+C02", "Optional cross-criterion composition: a strong C02 (own-case experience) may support borderline C01 judgments. Not automatic — handled by the human reviewer or a separate composition prompt.", "—"),
     ("R-PAIR-C03-C04", "C03+C04", "Optional cross-criterion composition between strategy-skill and strategy-experience.", "—"),
     ("R-PAIR-C05-C06", "C05+C06", "Optional cross-criterion composition between budget-skill and budget-experience.", "—"),
